@@ -2,6 +2,7 @@ package com.princeli.framework.webmvc.servlet;
 
 import com.princeli.demo.mvc.action.DemoAction;
 import com.princeli.framework.annotation.*;
+import com.princeli.framework.aop.AopProxyUtils;
 import com.princeli.framework.context.ApplicationContext;
 import com.princeli.framework.webmvc.HandlerAdapter;
 import com.princeli.framework.webmvc.HandlerMapping;
@@ -180,40 +181,46 @@ public class DispatchServlet extends HttpServlet {
     }
 
     private void initHandlerMappings(ApplicationContext context) {
-        String [] beanNames = context.getBeanDefinitionNames();
+        String[] beanNames = context.getBeanDefinitionNames();
 
-        for (String beanName:beanNames) {
-            Object controller = context.getBean(beanName);
+        try {
+
+        for (String beanName : beanNames) {
+            Object proxy = context.getBean(beanName);
+            Object controller = AopProxyUtils.getTargetObject(proxy);
 
             Class<?> clazz = controller.getClass();
             //
-            if(!clazz.isAnnotationPresent(Controller.class)){
+            if (!clazz.isAnnotationPresent(Controller.class)) {
                 continue;
             }
 
             String baseUrl = "";
 
-            if (clazz.isAnnotationPresent(RequestMapping.class)){
-               RequestMapping requestMapping = clazz.getAnnotation(RequestMapping.class);
-               baseUrl = requestMapping.value();
+            if (clazz.isAnnotationPresent(RequestMapping.class)) {
+                RequestMapping requestMapping = clazz.getAnnotation(RequestMapping.class);
+                baseUrl = requestMapping.value();
             }
 
+            //扫描public方法
             Method[] methods = clazz.getMethods();
-            for (Method method: methods){
-                if (!method.isAnnotationPresent(RequestMapping.class)){
+            for (Method method : methods) {
+                if (!method.isAnnotationPresent(RequestMapping.class)) {
                     continue;
                 }
 
                 RequestMapping requestMapping = method.getAnnotation(RequestMapping.class);
                 String regex = ("/" + baseUrl + requestMapping.value().replaceAll("\\*", ".*")).replaceAll("/+", "/");
                 Pattern pattern = Pattern.compile(regex);
-                this.handlerMappings.add(new HandlerMapping(controller,method,pattern));
-
+                this.handlerMappings.add(new HandlerMapping(controller, method, pattern));
+                System.out.println("Mapping: "+regex+" , "+ method);
             }
 
         }
 
-
+        }catch (Exception e){
+            e.printStackTrace();
+        }
     }
 
     private void initHandlerAdapters(ApplicationContext context) {

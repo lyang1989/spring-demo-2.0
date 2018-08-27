@@ -1,5 +1,7 @@
 package com.princeli.framework.beans;
 
+import com.princeli.framework.aop.AopConfig;
+import com.princeli.framework.aop.AopProxy;
 import com.princeli.framework.core.FactoryBean;
 
 /**
@@ -9,6 +11,9 @@ import com.princeli.framework.core.FactoryBean;
  * @create: 2018-08-16 09:42
  **/
 public class BeanWrapper extends FactoryBean {
+
+    private AopProxy aopProxy = new AopProxy();
+
 
     private BeanPostProcessor postProcessor;
 
@@ -27,7 +32,7 @@ public class BeanWrapper extends FactoryBean {
 
 
     public BeanWrapper(Object instance) {
-        this.wrapperInstance = instance;
+        this.wrapperInstance = aopProxy.getProxy(instance);
         this.originalInstance = instance;
     }
 
@@ -37,5 +42,15 @@ public class BeanWrapper extends FactoryBean {
 
     public Class<?> getWrappedClass(){
         return this.wrapperInstance.getClass();
+    }
+
+
+    public void setAopConfig(AopConfig config){
+        aopProxy.setConfig(config);
+    }
+
+
+    public Object getOriginalInstance() {
+        return originalInstance;
     }
 }

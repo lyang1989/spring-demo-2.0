@@ -3,11 +3,7 @@ package com.princeli.demo.mvc.service.impl;
 import com.princeli.demo.mvc.service.IModifyService;
 import com.princeli.framework.annotation.Service;
 
-/**
- * 增删改业务
- * @author Tom
- *
- */
+
 @Service
 public class ModifyService implements IModifyService {
 

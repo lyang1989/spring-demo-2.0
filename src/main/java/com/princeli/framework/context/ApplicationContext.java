@@ -1,9 +1,9 @@
 package com.princeli.framework.context;
 
-import com.princeli.demo.mvc.action.MyAction;
 import com.princeli.framework.annotation.Autowried;
 import com.princeli.framework.annotation.Controller;
 import com.princeli.framework.annotation.Service;
+import com.princeli.framework.aop.AopConfig;
 import com.princeli.framework.beans.BeanDefinition;
 import com.princeli.framework.beans.BeanPostProcessor;
 import com.princeli.framework.beans.BeanWrapper;
@@ -11,11 +11,14 @@ import com.princeli.framework.context.support.BeanDefinitionReader;
 import com.princeli.framework.core.BeanFactory;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 /**
  * @program: spring-demo-2.0
@@ -23,13 +26,12 @@ import java.util.concurrent.ConcurrentHashMap;
  * @author: ly
  * @create: 2018-08-15 11:22
  **/
-public class ApplicationContext implements BeanFactory {
+public class ApplicationContext extends DefaultListableBeanFactory implements BeanFactory {
 
     private String[] configLocations;
 
     private BeanDefinitionReader reader;
 
-    private Map<String, BeanDefinition> beanDefinitionMap = new ConcurrentHashMap<String, BeanDefinition>();
 
     private Map<String,Object> beanCacheMap = new HashMap<String, Object>();
 
@@ -59,13 +61,14 @@ public class ApplicationContext implements BeanFactory {
         for (Map.Entry<String,BeanDefinition> beanDefinitionEntry : this.beanDefinitionMap.entrySet()){
             String beanName = beanDefinitionEntry.getKey();
             if(!beanDefinitionEntry.getValue().isLazyInit()){
-                getBean(beanName);
+                Object obj = getBean(beanName);
+                System.out.println(obj);
             }
         }
 
 
         for (Map.Entry<String,BeanWrapper> beanWrapperEntry : this.beanWrapperMap.entrySet()){
-             populateBean(beanWrapperEntry.getKey(),beanWrapperEntry.getValue().getWrappedInstance());
+             populateBean(beanWrapperEntry.getKey(),beanWrapperEntry.getValue().getOriginalInstance());
         }
 
     }
@@ -165,6 +168,7 @@ public class ApplicationContext implements BeanFactory {
 
 
             BeanWrapper beanWrapper = new BeanWrapper(instance);
+            beanWrapper.setAopConfig(instantionAopConfig(beanDefinition));
             beanWrapper.setPostProcessor(beanPostProcessor);
             this.beanWrapperMap.put(beanName,beanWrapper);
 
@@ -182,6 +186,35 @@ public class ApplicationContext implements BeanFactory {
 
 
         return null;
+    }
+
+
+    private AopConfig instantionAopConfig(BeanDefinition beanDefinition) throws Exception {
+        AopConfig config = new AopConfig();
+        String expression = reader.getConfig().getProperty("pointCut");
+        String[] before = reader.getConfig().getProperty("aspectBefore").split("\\s");
+        String[] after =  reader.getConfig().getProperty("aspectAfter").split("\\s");
+
+        String className = beanDefinition.getBeanClassName();
+        Class<?> clazz = Class.forName(className);
+
+        Pattern pattern = Pattern.compile(expression);
+
+        Class aspectClass = Class.forName(before[0]);
+        //原生方法
+        for (Method m:clazz.getMethods()){
+
+            //public .* com\.princeli\.demo\.mvc\.service\..*Service\..*\(.*\)
+            //public java.lang.String com.princeli.demo.mvc.service.impl.ModifyService.add(java.lang.String)
+
+            Matcher matcher = pattern.matcher(m.toString());
+
+            if (matcher.matches()){
+                config.put(m,aspectClass.newInstance(),new Method[]{aspectClass.getMethod(before[1]),aspectClass.getMethod(after[1])});
+            }
+        }
+
+        return config;
     }
 
     /**
@@ -224,6 +257,5 @@ public class ApplicationContext implements BeanFactory {
     public Properties getConfig(){
         return reader.getConfig();
     }
-
 
 }

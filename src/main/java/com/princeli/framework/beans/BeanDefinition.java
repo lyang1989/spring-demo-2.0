@@ -8,8 +8,14 @@ package com.princeli.framework.beans;
  **/
 public class BeanDefinition {
 
+    /**
+     * 类完整路径
+     */
     private String beanClassName;
 
+    /**
+     * 类装载名称
+     */
     private String factoryBeanName;
 
     private boolean lazyInit = false;
